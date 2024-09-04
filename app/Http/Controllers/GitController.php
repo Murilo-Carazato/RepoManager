@@ -30,8 +30,15 @@ class GitController extends Controller
 
         exec("cd $repoPath && git pull 2>&1", $output, $returnVar);
 
-        $message = $returnVar === 0 ? 'Git pull executado com sucesso!' : 'Erro ao executar git pull: ' . implode("\n", $output);
-        return redirect()->back()->with($returnVar === 0 ? 'success' : 'error', $message);
+        // $message = $returnVar === 0 ? 'Git pull executado com sucesso!' : 'Erro ao executar git pull: ' . implode("\n", $output);
+        // return redirect()->back()->with($returnVar === 0 ? 'success' : 'error', $message);
+
+        $message = $returnVar === 0 ? 'Git pull no repositório ' . basename($repoPath) . ' executado com sucesso!' : 'Erro ao executar git pull do repositório ' . basename($repoPath) . ': ' . implode("\n", $output);
+
+        $messagesKey = $returnVar === 0 ? 'success' : 'error';
+        session()->push($messagesKey, $message);
+
+        return redirect()->back();
     }
 
     private function getRepositories(string $baseDir): array
@@ -81,19 +88,21 @@ class GitController extends Controller
         if ($this->isServerRunning($repoPath)) {
             $this->stopServer($port);
             $this->clearSession($repoPath);
-            return redirect()->back()->with('success', 'Servidor parado com sucesso!');
+            // return redirect()->back()->with('success', 'Servidor parado com sucesso!');
+            session()->push('success', 'Servidor ' . basename($repoPath) . " parado com sucesso!");
         } else {
             $port = $this->startServer($repoPath);
             session()->put("repo_status_{$repoPath}", 'Ligado');
             session()->put("repo_port_{$repoPath}", $port);
-            return redirect()->back()->with('success', "Servidor iniciado com sucesso na porta {$port}!");
+            // return redirect()->back()->with('success', "Servidor iniciado com sucesso na porta {$port}!");
+            session()->push('success', 'Servidor ' . basename($repoPath) . " iniciado com sucesso na porta {$port}!");
         }
+        return redirect()->back();
     }
 
     private function startServer(string $repoPath): int
     {
         $port = $this->getNextAvailablePort();
-        Log::info("Servidor iniciado para o repositório em {$repoPath} na porta {$port}");
         $command = "cd {$repoPath} && php artisan serve --port={$port}";
         pclose(popen("start /B cmd /c \"$command\"", "r"));
         return $port;
@@ -139,5 +148,13 @@ class GitController extends Controller
     {
         session()->forget("repo_status_{$repoPath}");
         session()->forget("repo_port_{$repoPath}");
+    }
+
+    public function clearMessages()
+    {
+        session()->forget('success');
+        session()->forget('error');
+
+        return redirect()->back()->with('success', 'Mensagens limpas com sucesso!');
     }
 }
