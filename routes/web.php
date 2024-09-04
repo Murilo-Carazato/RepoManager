@@ -1,12 +1,10 @@
 <?php
 
 use App\Http\Controllers\GitController;
-use App\Http\Controllers\TerminalController;
 use Illuminate\Support\Facades\Route;
 
-// Route::get('/', function () {
-//     return view('home');
-// });
+//auto run server
+//comandos mais usados no git
 
 Route::get('/', [GitController::class, 'index']);//->middleware('auth')
 Route::post('/git/pull', [GitController::class, 'pull'])->name('git.pull');

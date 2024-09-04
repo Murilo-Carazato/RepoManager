@@ -10,6 +10,7 @@
     <style>
         body {
             background-color: #f8f9fa;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         body.dark-mode {
@@ -34,6 +35,14 @@
             max-height: 200px;
             overflow-y: auto;
             margin-bottom: 20px;
+            background-color: #f1f1f1;
+        }
+
+        .dark-mode .messages-container {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background-color: #1c1e21;
         }
 
         .card-header {
@@ -100,16 +109,50 @@
         .btn-warning {
             background-color: #ffc107;
             border-color: #ffc107;
-            color: #343a40;
+            color: #ffffff;
         }
 
         .btn-warning:hover {
             background-color: #e0a800;
             border-color: #d39e00;
+            color: #ffffff;
         }
 
         .alert {
             margin-bottom: 10px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: #f1f1f1;
+        }
+
+        body.dark-mode ::-webkit-scrollbar-track {
+            background-color: #2c2c2c;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #007bff;
+            border-radius: 6px;
+        }
+
+        body.dark-mode ::-webkit-scrollbar-thumb {
+            background-color: #0056b3;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #0056b3;
+        }
+
+        body.dark-mode ::-webkit-scrollbar-thumb:hover {
+            background-color: #003d7a;
+        }
+
+        hr {
+            border: 1px solid gray;
         }
     </style>
 </head>
@@ -121,8 +164,7 @@
     </nav>
 
     <div class="container mt-4">
-        <!-- Mensagens de sucesso e erro -->
-        <div class="messages-container">
+        <div class="messages-container dark-mode">
             @if (session('success') && is_array(session('success')))
                 @foreach (session('success') as $success)
                     <div class="alert alert-success">{{ $success }}</div>
@@ -196,9 +238,16 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <script>
-        document.getElementById('darkModeToggle').addEventListener('click', function() {
+        function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
-        });
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
+        }
+
+        document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
+
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.body.classList.add('dark-mode');
+        }
     </script>
 </body>
 
