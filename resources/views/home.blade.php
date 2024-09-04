@@ -36,13 +36,12 @@
             overflow-y: auto;
             margin-bottom: 20px;
             background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
         }
 
         .dark-mode .messages-container {
-            max-height: 200px;
-            overflow-y: auto;
-            margin-bottom: 20px;
-            background-color: #1c1e21;
+            background-color: #2c2c2c;
         }
 
         .card-header {
