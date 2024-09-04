@@ -8,25 +8,116 @@
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        body.dark-mode {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+
+        .navbar {
+            background-color: #343a40;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .dark-mode .navbar {
+            background-color: #1c1e21;
+        }
+
         .messages-container {
             max-height: 200px;
             overflow-y: auto;
             margin-bottom: 20px;
         }
 
-        .repository {
-            margin-bottom: 20px;
+        .card-header {
+            background-color: #007bff;
+            color: #ffffff;
+            font-weight: bold;
         }
 
-        .repository hr {
-            margin-top: 20px;
+        .dark-mode .card-header {
+            background-color: #0056b3;
+        }
+
+        .card-body {
+            background-color: #ffffff;
+            border: 1px solid #007bff;
+            border-top: none;
+            border-radius: 0 0 0.25rem 0.25rem;
+        }
+
+        .dark-mode .card-body {
+            background-color: #1c1e21;
+            border-color: #0056b3;
+        }
+
+        .repository h3 {
+            font-size: 1.5rem;
+            color: #343a40;
+            margin-bottom: 10px;
+        }
+
+        .dark-mode .repository h3 {
+            color: #ffffff;
+        }
+
+        .repository p {
+            margin-bottom: 5px;
+            color: #495057;
+        }
+
+        .dark-mode .repository p {
+            color: #d3d3d3;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #343a40;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+        }
+
+        .alert {
+            margin-bottom: 10px;
         }
     </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <a class="navbar-brand" href="#">ServerSync</a>
+        <button id="darkModeToggle" class="btn btn-outline-light ml-auto">Dark Mode</button>
     </nav>
 
     <div class="container mt-4">
@@ -51,7 +142,6 @@
                 <button type="submit" class="btn btn-warning">Limpar Mensagens</button>
             </form>
         @endif
-
 
         <p>
             Caso o repositório não esteja visível, certifique-se de que ele esteja no caminho:
@@ -104,6 +194,12 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        document.getElementById('darkModeToggle').addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+        });
+    </script>
 </body>
 
 </html>
