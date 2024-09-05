@@ -207,6 +207,10 @@
                                     <strong>Status do Servidor:</strong>
                                     {{ session("repo_status_{$repo['path']}", $repo['status']) }}
                                 </p>
+                                <p>
+                                    <strong>Auto Server:</strong>
+                                    {{ session("repo_auto_server_status_{$repo['path']}") ?? 'Desligado' }}
+                                </p>
 
                                 <div class="d-flex justify-content-between">
                                     <form action="{{ route('git.pull') }}" method="POST" class="mr-2">
@@ -220,6 +224,13 @@
                                         <input type="hidden" name="repo_path" value="{{ $repo['path'] }}">
                                         <button type="submit" class="btn btn-secondary">
                                             {{ session("repo_status_{$repo['path']}", $repo['status']) == 'Ligado' ? 'Desligar' : 'Ligar' }}
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('git.autoRunSwitch') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="repo_path" value="{{ $repo['path'] }}">
+                                        <button type="submit" class="btn btn-success">
+                                            {{ session("repo_auto_server_status_{$repo['path']}") === 'Ligado' ? 'Desligar Auto Run' : 'Ligar Auto Run' }}
                                         </button>
                                     </form>
                                 </div>

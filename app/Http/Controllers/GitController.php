@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class GitController extends Controller
 {
@@ -11,7 +12,8 @@ class GitController extends Controller
 
     public function __construct()
     {
-        $this->baseDir = 'C:\Users\Murilo Carazato\Documents\Flutter Projects';
+
+        $this->baseDir = 'C:\Users\Murilo Carazato\Documents\Flutter Projects\assis-ofertas';
         $this->repositories = $this->getRepositories($this->baseDir);
     }
 
@@ -19,6 +21,7 @@ class GitController extends Controller
     {
         $this->clearSession();
         $this->updateRepositoryStatus();
+        
         return view('home', ['repositories' => $this->repositories, 'baseDir' => $this->baseDir]);
     }
 
@@ -75,6 +78,37 @@ class GitController extends Controller
             return "https://github.com/{$matches[1]}/{$matches[2]}.git";
         }
         return $sshUrl;
+    }
+
+    public function autoRunSwitch(Request $request)
+    {
+        $repoPath = $request->input('repo_path');
+
+        // Buscar o repositório correspondente
+        foreach ($this->repositories as &$repo) {
+            if ($repo['path'] === $repoPath) {
+                // Alternar o valor de autoRun
+                if (session("repo_auto_server_status_{$repoPath}") === "Ligado") {
+                    session()->put("repo_auto_server_status_{$repoPath}", 'Desligado');
+                    session()->push('success', 'O auto run foi desativado no servidor: ' . basename($repoPath));
+                } else {
+                    session()->put("repo_auto_server_status_{$repoPath}", 'Ligado');
+                    session()->push('success', 'O auto run foi ativado no servidor: ' . basename($repoPath));
+                }
+            }
+        }
+
+        return redirect()->back();
+    }
+
+    public function autoRunStart()
+    {
+        foreach ($this->repositories as &$repo) {
+            if (session("repo_auto_server_status_{$repo['path']}") === "Ligado") {
+                $this->startServer($repo['path']);
+                session()->push('success', 'Servidor iniciado para ' . basename($repo['path']));
+            }
+        }
     }
 
     public function serve(Request $request)
