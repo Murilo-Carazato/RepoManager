@@ -21,7 +21,7 @@ class GitController extends Controller
     {
         $this->clearSession();
         $this->updateRepositoryStatus();
-        
+
         return view('home', ['repositories' => $this->repositories, 'baseDir' => $this->baseDir]);
     }
 
@@ -84,19 +84,15 @@ class GitController extends Controller
     {
         $repoPath = $request->input('repo_path');
 
-        // Buscar o repositório correspondente
-        foreach ($this->repositories as &$repo) {
-            if ($repo['path'] === $repoPath) {
-                // Alternar o valor de autoRun
-                if (session("repo_auto_server_status_{$repoPath}") === "Ligado") {
-                    session()->put("repo_auto_server_status_{$repoPath}", 'Desligado');
-                    session()->push('success', 'O auto run foi desativado no servidor: ' . basename($repoPath));
-                } else {
-                    session()->put("repo_auto_server_status_{$repoPath}", 'Ligado');
-                    session()->push('success', 'O auto run foi ativado no servidor: ' . basename($repoPath));
-                }
-            }
+        if (session("repo_auto_server_status_{$repoPath}") === "Ligado") {
+            session()->put("repo_auto_server_status_{$repoPath}", 'Desligado');
+            session()->push('success', 'O auto run foi desativado no servidor: ' . basename($repoPath));
+        } else {
+            session()->put("repo_auto_server_status_{$repoPath}", 'Ligado');
+            session()->put("repo_status_{$repoPath}", $this->isServerRunning($repoPath) == "Ligadow" ? 'Desligadow' : 'Ligadow');
+            session()->push('success', 'O auto run foi ativado no servidor: ' . basename($repoPath));
         }
+
 
         return redirect()->back();
     }
@@ -107,6 +103,9 @@ class GitController extends Controller
             if (session("repo_auto_server_status_{$repo['path']}") === "Ligado") {
                 $this->startServer($repo['path']);
                 session()->push('success', 'Servidor iniciado para ' . basename($repo['path']));
+                // session()->put("repo_status_{$repo['path']}", 'afasfas');
+                session()->put("repo_status_{$repo['path']}", $this->isServerRunning($repo['path']) == "Ligado" ? 'Desligado' : 'Ligado');
+                // session()->put($this->isServerRunning($repo['path']) ? 'Ligado' : 'Desligado');
             }
         }
     }
@@ -123,7 +122,8 @@ class GitController extends Controller
         } else {
             $port = $this->startServer($repoPath);
             sleep(2);
-            session()->put("repo_status_{$repoPath}", 'Ligado');
+            // session()->put("repo_status_{$repoPath}", 'Ligado');
+            session()->put($this->isServerRunning($repoPath) ? 'Ligado' : 'Desligado');
             session()->put("repo_port_{$repoPath}", $port);
             session()->push('success', 'Servidor ' . basename($repoPath) . " iniciado com sucesso na porta {$port}!");
         }
