@@ -223,7 +223,7 @@
                                         @csrf
                                         <input type="hidden" name="repo_path" value="{{ $repo['path'] }}">
                                         <button type="submit" class="btn btn-secondary">
-                                            {{ session("repo_status_{$repo['path']}", $repo['status']) == 'Ligado' ? 'Desligar' : 'Ligar' }}
+                                            {{ session("repo_status_{$repo['path']}", 'Desligado') === 'Ligado' ? 'Desligar Servidor' : 'Ligar Servidor' }}
                                         </button>
                                     </form>
                                     <form action="{{ route('git.autoRunSwitch') }}" method="POST">

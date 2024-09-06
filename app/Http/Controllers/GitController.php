@@ -89,7 +89,7 @@ class GitController extends Controller
             session()->push('success', 'O auto run foi desativado no servidor: ' . basename($repoPath));
         } else {
             session()->put("repo_auto_server_status_{$repoPath}", 'Ligado');
-            session()->put("repo_status_{$repoPath}", $this->isServerRunning($repoPath) == "Ligadow" ? 'Desligadow' : 'Ligadow');
+            session()->put("repo_status_{$repoPath}", $this->isServerRunning($repoPath) ? 'Desligadow' : 'Ligadow');
             session()->push('success', 'O auto run foi ativado no servidor: ' . basename($repoPath));
         }
 
@@ -101,10 +101,13 @@ class GitController extends Controller
     {
         foreach ($this->repositories as &$repo) {
             if (session("repo_auto_server_status_{$repo['path']}") === "Ligado") {
-                $this->startServer($repo['path']);
+
+                $port = $this->startServer($repo['path']);
+                session()->put("repo_port_{$repo['path']}", $port);
+
                 session()->push('success', 'Servidor iniciado para ' . basename($repo['path']));
                 // session()->put("repo_status_{$repo['path']}", 'afasfas');
-                session()->put("repo_status_{$repo['path']}", $this->isServerRunning($repo['path']) == "Ligado" ? 'Desligado' : 'Ligado');
+                session()->put("repo_status_{$repo['path']}", $this->isServerRunning($repo['path']) ? 'Desligado' : 'Ligado');
                 // session()->put($this->isServerRunning($repo['path']) ? 'Ligado' : 'Desligado');
             }
         }
@@ -115,21 +118,25 @@ class GitController extends Controller
         $repoPath = $request->input('repo_path');
         $port = session("repo_port_{$repoPath}");
 
-        if ($this->isServerRunning($repoPath)) {
+        $status = session("repo_status_{$repoPath}", 'Desligado');
+
+        if ($status === 'Ligado') {
+            //auto run n está dando a porta q ele ligou corretamente
             $this->stopServer($port);
             $this->clearSession($repoPath);
+            session()->put("repo_status_{$repoPath}", 'Desligado');
             session()->push('success', 'Servidor ' . basename($repoPath) . " parado com sucesso!");
         } else {
             $port = $this->startServer($repoPath);
             sleep(2);
-            // session()->put("repo_status_{$repoPath}", 'Ligado');
-            session()->put($this->isServerRunning($repoPath) ? 'Ligado' : 'Desligado');
+            session()->put("repo_status_{$repoPath}", 'Ligado');
             session()->put("repo_port_{$repoPath}", $port);
             session()->push('success', 'Servidor ' . basename($repoPath) . " iniciado com sucesso na porta {$port}!");
         }
 
         return redirect()->back();
     }
+
 
     private function startServer(string $repoPath): int
     {
@@ -191,3 +198,10 @@ class GitController extends Controller
         return redirect()->back()->with('success', 'Mensagens limpas com sucesso!');
     }
 }
+
+//RESOLVIDO EM PARTES
+//o botão de ligar/desligar servidor n funciona corretamente, quando eu ligo o autorun, ele altera o texto do botão para "desligar" corretamente, porém ao clicar em desligar, ele inicia o servidor, mas era para ele desligar o servidor
+
+//ao apertar o autorun, sempre q a página recarregar o servidor iniciará, isso se torna um problema pois quando clico em autorun e depois clico em desligar servidor, o servidor é desligado mas depois a tela recarrega, fazendo com q o autorun ligue o servidor novamente
+
+//ao apertar no botão de ligar, e fechar o cmd que ele abriu, o status do servidor ainda fica como "ligado" e o botão como "desligar", sendo q ao fechar o cmd era para o status do servidor ficar como "desligado" e o botão como "ligar".
