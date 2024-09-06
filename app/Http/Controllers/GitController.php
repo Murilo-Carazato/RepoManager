@@ -3,26 +3,28 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Session;
 
 class GitController extends Controller
 {
-    private array $repositories = [];
+    private array $repositories;
     private string $baseDir;
 
     public function __construct()
     {
-
         $this->baseDir = 'C:\Users\Murilo Carazato\Documents\Flutter Projects\assis-ofertas';
         $this->repositories = $this->getRepositories($this->baseDir);
+        $this->autoRunStart();
     }
 
     public function index()
     {
-        $this->clearSession();
-        $this->updateRepositoryStatus();
+        $this->updateRepositoryStatuses();
 
-        return view('home', ['repositories' => $this->repositories, 'baseDir' => $this->baseDir]);
+        return view('home', [
+            'repositories' => $this->repositories,
+            'baseDir' => $this->baseDir
+        ]);
     }
 
     public function pull(Request $request)
@@ -41,11 +43,75 @@ class GitController extends Controller
         return redirect()->back();
     }
 
+    public function toggleAutoRun(Request $request)
+    {
+        $repoPath = $request->input('repo_path');
+        $currentStatus = session("repo_auto_server_status_{$repoPath}", 'Desligado');
+
+        $newStatus = $currentStatus === 'Ligado' ? 'Desligado' : 'Ligado';
+        session()->put("repo_auto_server_status_{$repoPath}", $newStatus);
+        session()->push('success', "O auto run foi {$newStatus} no servidor: " . basename($repoPath));
+
+
+        return redirect()->back();
+    }
+
+    public function autoRunStart()
+    {
+        foreach ($this->repositories as $repo) {
+            if (session("repo_started_{$repo['path']}")==="teste") {
+                continue;
+            }
+
+            $port = $this->startServer($repo['path']);
+            $this->storeServerStatus($repo['path'], $port, 'Ligado');
+            session()->forget("repo_started_{$repo['path']}");
+            session()->put("repo_started_{$repo['path']}", "teste");
+        }
+    }
+
+    public function serve(Request $request)
+    {
+        $repoPath = $request->input('repo_path');
+        $status = session("repo_status_{$repoPath}", 'Desligado');
+
+        if ($status === 'Ligado') {
+            $this->stopServer($repoPath);
+        } else {
+            $this->startServer($repoPath);
+        }
+
+        return redirect()->back();
+    }
+
+    private function startServer(string $repoPath): int
+    {
+        $port = $this->getNextAvailablePort();
+        $command = "cd {$repoPath} && php artisan serve --port={$port}";
+        pclose(popen("start cmd /c \"$command\"", "r"));
+
+        $this->storeServerStatus($repoPath, $port, 'Ligado');
+        return $port;
+    }
+
+    private function stopServer(string $repoPath): void
+    {
+        $port = session("repo_port_{$repoPath}");
+        exec("FOR /F \"tokens=5\" %a in ('netstat -aon ^| findstr :{$port}') do taskkill /F /PID %a");
+        $this->clearSession($repoPath);
+        session()->push('success', 'Servidor ' . basename($repoPath) . ' parado com sucesso!');
+    }
+
+    private function storeServerStatus(string $repoPath, int $port, string $status): void
+    {
+        session()->put("repo_status_{$repoPath}", $status);
+        session()->put("repo_port_{$repoPath}", $port);
+        session()->push('success', "Servidor " . basename($repoPath) . " {$status} na porta {$port}!");
+    }
+
     private function getRepositories(string $baseDir): array
     {
-        return array_filter(array_map(function ($dir) {
-            return $this->isValidRepository($dir) ? $this->createRepositoryData($dir) : null;
-        }, glob($baseDir . '/*')), fn($repo) => $repo !== null);
+        return array_filter(array_map(fn($dir) => $this->isValidRepository($dir) ? $this->createRepositoryData($dir) : null, glob($baseDir . '/*')), fn($repo) => $repo !== null);
     }
 
     private function isValidRepository(string $dir): bool
@@ -80,81 +146,6 @@ class GitController extends Controller
         return $sshUrl;
     }
 
-    public function autoRunSwitch(Request $request)
-    {
-        $repoPath = $request->input('repo_path');
-
-        if (session("repo_auto_server_status_{$repoPath}") === "Ligado") {
-            session()->put("repo_auto_server_status_{$repoPath}", 'Desligado');
-            session()->push('success', 'O auto run foi desativado no servidor: ' . basename($repoPath));
-        } else {
-            session()->put("repo_auto_server_status_{$repoPath}", 'Ligado');
-            session()->push('success', 'O auto run foi ativado no servidor: ' . basename($repoPath));
-        }
-
-
-        return redirect()->back();
-    }
-
-    public function autoRunStart()
-    {
-        foreach ($this->repositories as &$repo) {
-            if (session("repo_started_{$repo['path']}") === true) {
-                continue;
-            }
-
-            if (session("repo_auto_server_status_{$repo['path']}") === "Ligado") {
-
-                $port = $this->startServer($repo['path']);
-                session()->put("repo_port_{$repo['path']}", $port);
-                session()->push('success', 'Servidor iniciado para ' . basename($repo['path']));
-                session()->put("repo_status_{$repo['path']}", $this->isServerRunning($repo['path']) ? 'Desligado' : 'Ligado');
-            
-                session()->put("repo_started_{$repo['path']}", true);
-            }
-        }
-    }
-
-    public function serve(Request $request)
-    {
-        $repoPath = $request->input('repo_path');
-        $port = session("repo_port_{$repoPath}");
-
-        $status = session("repo_status_{$repoPath}", 'Desligado');
-
-        if ($status === 'Ligado') {
-            $this->stopServer($port);
-            $this->clearSession($repoPath);
-            session()->put("repo_status_{$repoPath}", 'Desligado');
-            session()->push('success', 'Servidor ' . basename($repoPath) . " parado com sucesso!");
-        } else {
-            $port = $this->startServer($repoPath);
-            sleep(2);
-            session()->put("repo_status_{$repoPath}", 'Ligado');
-            session()->put("repo_port_{$repoPath}", $port);
-            session()->push('success', 'Servidor ' . basename($repoPath) . " iniciado com sucesso na porta {$port}!");
-        }
-
-        return redirect()->back();
-    }
-
-
-    private function startServer(string $repoPath): int
-    {
-        $port = $this->getNextAvailablePort();
-        $command = "cd {$repoPath} && php artisan serve --port={$port}";
-        pclose(popen("start cmd /c \"$command\"", "r"));
-        return $port;
-    }
-
-
-    private function stopServer(int $port)
-    {
-        $command = "FOR /F \"tokens=5\" %a in ('netstat -aon ^| findstr :{$port}') do taskkill /F /PID %a";
-        exec($command);
-        sleep(1);
-    }
-
     private function isServerRunning(string $repoPath): bool
     {
         $port = session("repo_port_{$repoPath}");
@@ -178,7 +169,7 @@ class GitController extends Controller
         return empty($output);
     }
 
-    private function updateRepositoryStatus(): void
+    private function updateRepositoryStatuses(): void
     {
         foreach ($this->repositories as &$repo) {
             $repo['status'] = $this->isServerRunning($repo['path']) ? 'Ligado' : 'Desligado';
@@ -187,17 +178,18 @@ class GitController extends Controller
 
     private function clearSession(string $repoPath = null): void
     {
-        session()->forget("repo_status_{$repoPath}");
-        session()->forget("repo_port_{$repoPath}");
+        if ($repoPath) {
+            session()->forget("repo_status_{$repoPath}");
+            session()->forget("repo_port_{$repoPath}");
+        } else {
+            session()->forget('success');
+            session()->forget('error');
+        }
     }
 
     public function clearMessages()
     {
-        session()->forget('success');
-        session()->forget('error');
-
-        return redirect()->back()->with('success', 'Mensagens limpas com sucesso!');
+        $this->clearSession();
+        return redirect()->back();
     }
 }
-
-//ao apertar no botão de ligar, e fechar o cmd que ele abriu, o status do servidor ainda fica como "ligado" e o botão como "desligar", sendo q ao fechar o cmd era para o status do servidor ficar como "desligado" e o botão como "ligar".
