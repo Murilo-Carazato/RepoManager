@@ -14,7 +14,6 @@ class GitController extends Controller
     {
         $this->baseDir = 'C:\Users\Murilo Carazato\Documents\Flutter Projects\assis-ofertas';
         $this->repositories = $this->getRepositories($this->baseDir);
-        $this->autoRunStart();
     }
 
     public function index()
@@ -59,14 +58,11 @@ class GitController extends Controller
     public function autoRunStart()
     {
         foreach ($this->repositories as $repo) {
-            if (session("repo_started_{$repo['path']}")==="teste") {
-                continue;
-            }
+            if (session("repo_auto_server_status_{$repo['path']}") === "Ligado") {
 
-            $port = $this->startServer($repo['path']);
-            $this->storeServerStatus($repo['path'], $port, 'Ligado');
-            session()->forget("repo_started_{$repo['path']}");
-            session()->put("repo_started_{$repo['path']}", "teste");
+                $port = $this->startServer($repo['path']);
+                $this->storeServerStatus($repo['path'], $port, 'Ligado');
+            }
         }
     }
 

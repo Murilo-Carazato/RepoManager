@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Route;
 //dps excluir eles:
 //taskkill /F /IM php.exe
 
-// Route::middleware([AutoRunMiddleware::class])->group(function () {
+Route::middleware([AutoRunMiddleware::class])->group(function () {
 Route::get('/', [GitController::class, 'index']);
-// });
+});
 Route::post('/git/pull', [GitController::class, 'pull'])->name('git.pull');
 Route::post('/git/auto-run-switch', [GitController::class, 'toggleAutoRun'])->name('git.autoRunSwitch');
 Route::post('/serve', [GitController::class, 'serve'])->name('git.serve');
