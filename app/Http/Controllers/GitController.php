@@ -57,11 +57,20 @@ class GitController extends Controller
 
     public function autoRunStart()
     {
-        foreach ($this->repositories as $repo) {
-            if (session("repo_auto_server_status_{$repo['path']}") === "Ligado") {
 
+        foreach ($this->repositories as $repo) {
+            if (session("repo_started_{$repo['path']}") == "teste") {
+                session()->put("repo_started_{$repo['path']}", "parar");
+            }
+        }
+
+        foreach ($this->repositories as $repo) {
+            if (session("repo_auto_server_status_{$repo['path']}") === "Ligado" && session("repo_started_{$repo['path']}") !== "parar") {
                 $port = $this->startServer($repo['path']);
                 $this->storeServerStatus($repo['path'], $port, 'Ligado');
+                session()->put("repo_started_{$repo['path']}", "teste");
+            } else {
+                session()->forget("repo_started_{$repo['path']}");
             }
         }
     }
