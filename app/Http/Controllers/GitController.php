@@ -51,26 +51,20 @@ class GitController extends Controller
         session()->put("repo_auto_server_status_{$repoPath}", $newStatus);
         session()->push('success', "O auto run foi {$newStatus} no servidor: " . basename($repoPath));
 
+        session()->forget('auto_run_started');
 
         return redirect()->back();
     }
 
     public function autoRunStart()
     {
-
         foreach ($this->repositories as $repo) {
-            if (session("repo_started_{$repo['path']}") == "teste") {
-                session()->put("repo_started_{$repo['path']}", "parar");
-            }
-        }
+            $autoServerStatus = session("repo_auto_server_status_{$repo['path']}", 'Desligado');
+            $status = session("repo_status_{$repo['path']}", 'Desligado');
 
-        foreach ($this->repositories as $repo) {
-            if (session("repo_auto_server_status_{$repo['path']}") === "Ligado" && session("repo_started_{$repo['path']}") !== "parar") {
+            if ($autoServerStatus === 'Ligado' && $status === 'Desligado') {
                 $port = $this->startServer($repo['path']);
                 $this->storeServerStatus($repo['path'], $port, 'Ligado');
-                session()->put("repo_started_{$repo['path']}", "teste");
-            } else {
-                session()->forget("repo_started_{$repo['path']}");
             }
         }
     }
