@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
 
 class GitController extends Controller
 {
@@ -29,15 +28,9 @@ class GitController extends Controller
     public function pull(Request $request)
     {
         $repoPath = $request->input('repo_path');
-        $output = [];
-        $returnVar = null;
 
-        exec("cd $repoPath && git pull 2>&1", $output, $returnVar);
-
-        $message = $returnVar === 0 ? 'Git pull no repositório ' . basename($repoPath) . ' executado com sucesso!' : 'Erro ao executar git pull do repositório ' . basename($repoPath) . ': ' . implode("\n", $output);
-
-        $messagesKey = $returnVar === 0 ? 'success' : 'error';
-        session()->push($messagesKey, $message);
+        $output = $this->executeGitCommand($repoPath, 'git pull');
+        $this->storeMessageBasedOnOutput($output, $repoPath, 'Git pull no repositório ' .  basename($repoPath) . ' executado com sucesso!', 'Erro ao executar git pull');
 
         return redirect()->back();
     }
@@ -45,12 +38,9 @@ class GitController extends Controller
     public function toggleAutoRun(Request $request)
     {
         $repoPath = $request->input('repo_path');
-        $currentStatus = session("repo_auto_server_status_{$repoPath}", 'Desligado');
+        $newStatus = $this->toggleStatus($repoPath);
 
-        $newStatus = $currentStatus === 'Ligado' ? 'Desligado' : 'Ligado';
-        session()->put("repo_auto_server_status_{$repoPath}", $newStatus);
         session()->push('success', "O auto run foi {$newStatus} no servidor: " . basename($repoPath));
-
         session()->forget('auto_run_started');
 
         return redirect()->back();
@@ -63,8 +53,7 @@ class GitController extends Controller
             $status = session("repo_status_{$repo['path']}", 'Desligado');
 
             if ($autoServerStatus === 'Ligado' && $status === 'Desligado') {
-                $port = $this->startServer($repo['path']);
-                $this->storeServerStatus($repo['path'], $port, 'Ligado');
+                $this->startServer($repo['path']);
             }
         }
     }
@@ -106,6 +95,31 @@ class GitController extends Controller
         session()->put("repo_status_{$repoPath}", $status);
         session()->put("repo_port_{$repoPath}", $port);
         session()->push('success', "Servidor " . basename($repoPath) . " {$status} na porta {$port}!");
+    }
+
+    private function executeGitCommand(string $repoPath, string $command): array
+    {
+        $output = [];
+        exec("cd $repoPath && $command 2>&1", $output, $returnVar);
+        return compact('output', 'returnVar');
+    }
+
+    private function storeMessageBasedOnOutput(array $commandOutput, string $repoPath, string $successMessage, string $errorMessage)
+    {
+        $messagesKey = $commandOutput['returnVar'] === 0 ? 'success' : 'error';
+        $message = $commandOutput['returnVar'] === 0
+            ? $successMessage
+            : "{$errorMessage} do repositório " . basename($repoPath) . ': ' . implode("\n", $commandOutput['output']);
+
+        session()->push($messagesKey, $message);
+    }
+
+    private function toggleStatus(string $repoPath): string
+    {
+        $currentStatus = session("repo_auto_server_status_{$repoPath}", 'Desligado');
+        $newStatus = $currentStatus === 'Ligado' ? 'Desligado' : 'Ligado';
+        session()->put("repo_auto_server_status_{$repoPath}", $newStatus);
+        return $newStatus;
     }
 
     private function getRepositories(string $baseDir): array
