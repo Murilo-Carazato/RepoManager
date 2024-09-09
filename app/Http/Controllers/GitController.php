@@ -46,14 +46,29 @@ class GitController extends Controller
         return redirect()->back();
     }
 
+    //o autorun liga o mesmo servidor 2 vezes; pois a página é recarregada
+    //clicar em ligar autoserver V
+    //put teste
+    //clicar em desligar servidor V
+    //teste
+    //clicar em ligar servidor (dd)
+    //forget teste
+    //clicar em desligar servidor X (abre mais 1 cmd)
+    //clicar em desligar servidor V
+
     public function autoRunStart()
     {
         foreach ($this->repositories as $repo) {
-            $autoServerStatus = session("repo_auto_server_status_{$repo['path']}", 'Desligado');
+            $autoServerStatus = session("repo_auto_server_status_{$repo['path']}");
             $status = session("repo_status_{$repo['path']}", 'Desligado');
+            $parar = session("repo_started_{$repo['path']}");
 
-            if ($autoServerStatus === 'Ligado' && $status === 'Desligado') {
-                $this->startServer($repo['path']);
+            if ($autoServerStatus === "Ligado" && $status === 'Desligado' && $parar !== "teste") {
+                $port = $this->startServer($repo['path']);
+                $this->storeServerStatus($repo['path'], $port, 'Ligado');
+                session()->put("repo_started_{$repo['path']}", "teste");
+            } else {
+                session()->forget("repo_started_{$repo['path']}");
             }
         }
     }
