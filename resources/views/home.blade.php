@@ -163,19 +163,20 @@
         </nav>
 
         <div class="container mt-4">
-            @if (is_array(session('success')) || is_array(session('error')))
-                <div class="messages-container dark-mode">
-                    @if (session('success') && is_array(session('success')))
-                        @foreach (session('success') as $success)
-                            <div class="alert alert-success">{{ $success }}</div>
-                        @endforeach
-                    @endif
+            @php
+                $successMessages = Cache::get('messages_success', []);
+                $errorMessages = Cache::get('messages_error', []);
+            @endphp
 
-                    @if (session('error') && is_array(session('error')))
-                        @foreach (session('error') as $error)
-                            <div class="alert alert-danger">{{ $error }}</div>
-                        @endforeach
-                    @endif
+            @if (!empty($successMessages) || !empty($errorMessages))
+                <div class="messages-container dark-mode">
+                    @foreach ($successMessages as $success)
+                        <div class="alert alert-success">{{ $success }}</div>
+                    @endforeach
+
+                    @foreach ($errorMessages as $error)
+                        <div class="alert alert-danger">{{ $error }}</div>
+                    @endforeach
                 </div>
 
                 <form action="{{ route('git.clearMessages') }}" method="POST" class="mb-3">
@@ -206,11 +207,11 @@
                                 </p>
                                 <p>
                                     <strong>Status do Servidor:</strong>
-                                    {{ session("repo_status_{$repo['path']}", $repo['status']) }}
+                                    {{ Cache::get("repo_status_{$repo['path']}", $repo['status']) }}
                                 </p>
                                 <p>
                                     <strong>Auto Server:</strong>
-                                    {{ session("repo_auto_server_status_{$repo['path']}") ?? 'Desligado' }}
+                                    {{ Cache::get("repo_auto_server_status_{$repo['path']}") ?? 'Desligado' }}
                                 </p>
 
                                 <div class="d-flex justify-content-between">
@@ -224,14 +225,14 @@
                                         @csrf
                                         <input type="hidden" name="repo_path" value="{{ $repo['path'] }}">
                                         <button type="submit" class="btn btn-secondary">
-                                            {{ session("repo_status_{$repo['path']}", 'Desligado') === 'Ligado' ? 'Desligar Servidor' : 'Ligar Servidor' }}
+                                            {{ Cache::get("repo_status_{$repo['path']}", 'Desligado') === 'Ligado' ? 'Desligar Servidor' : 'Ligar Servidor' }}
                                         </button>
                                     </form>
                                     <form action="{{ route('git.autoRunSwitch') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="repo_path" value="{{ $repo['path'] }}">
                                         <button type="submit" class="btn btn-success">
-                                            {{ session("repo_auto_server_status_{$repo['path']}") === 'Ligado' ? 'Desligar Auto Run' : 'Ligar Auto Run' }}
+                                            {{ Cache::get("repo_auto_server_status_{$repo['path']}") === 'Ligado' ? 'Desligar Auto Run' : 'Ligar Auto Run' }}
                                         </button>
                                     </form>
                                 </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class GitController extends Controller
 {
@@ -11,7 +12,8 @@ class GitController extends Controller
 
     public function __construct()
     {
-        $this->baseDir = 'C:\Users\Murilo Carazato\Documents\Flutter Projects\assis-ofertas';
+        // $this->baseDir = 'C:\Users\Murilo Carazato\Documents\Flutter Projects\assis-ofertas';
+        $this->baseDir = 'C:\Users\Murilo Carazato\Documents\Flutter Projects';
         $this->repositories = $this->getRepositories($this->baseDir);
     }
 
@@ -40,15 +42,18 @@ class GitController extends Controller
         $repoPath = $request->input('repo_path');
         $newStatus = $this->toggleStatus($repoPath);
 
-        session()->push('success', "O auto run foi {$newStatus} no servidor: " . basename($repoPath));
-        session()->forget('auto_run_started');
+        $successMessages = Cache::get('success', []);
+        $successMessages[] = "O auto run foi {$newStatus} no servidor: " . basename($repoPath);
+        Cache::put('success', $successMessages);
+
+        Cache::forget('auto_run_started');
 
         return redirect()->back();
     }
 
-    //o autorun liga o mesmo servidor 2 vezes; pois a página é recarregada
+    //o autorun liga o mesmo servidor 2 vezes; pois a página é recarregada; o state no blade puro é feito recarregando a página, e o autorun é acionado ao carregar a página.
     //clicar em ligar autoserver V
-    //put teste
+    //put teste 
     //clicar em desligar servidor V
     //teste
     //clicar em ligar servidor (dd)
@@ -56,19 +61,28 @@ class GitController extends Controller
     //clicar em desligar servidor X (abre mais 1 cmd)
     //clicar em desligar servidor V
 
+    //
+
+    //clicar em ligar autoserver V
+    //clicar em desligar servidor X (Abre o mesmo cmd dnv)
+
+
+
     public function autoRunStart()
     {
         foreach ($this->repositories as $repo) {
-            $autoServerStatus = session("repo_auto_server_status_{$repo['path']}");
-            $status = session("repo_status_{$repo['path']}", 'Desligado');
-            $parar = session("repo_started_{$repo['path']}");
+            // Cache::forget("repo_started_{$repo['path']}");
 
-            if ($autoServerStatus === "Ligado" && $status === 'Desligado' && $parar !== "teste") {
+            $autoServerStatus = Cache::get("repo_auto_server_status_{$repo['path']}");
+            $status = Cache::get("repo_status_{$repo['path']}", 'Desligado');
+            $parar = Cache::get("repo_started_{$repo['path']}");
+
+            // dd($status, $parar);
+
+            if ($autoServerStatus === "Ligado" && $status === "Desligado" && $parar === null) {
                 $port = $this->startServer($repo['path']);
                 $this->storeServerStatus($repo['path'], $port, 'Ligado');
-                session()->put("repo_started_{$repo['path']}", "teste");
-            } else {
-                session()->forget("repo_started_{$repo['path']}");
+                Cache::put("repo_started_{$repo['path']}", "teste");
             }
         }
     }
@@ -76,7 +90,7 @@ class GitController extends Controller
     public function serve(Request $request)
     {
         $repoPath = $request->input('repo_path');
-        $status = session("repo_status_{$repoPath}", 'Desligado');
+        $status = Cache::get("repo_status_{$repoPath}", 'Desligado');
 
         if ($status === 'Ligado') {
             $this->stopServer($repoPath);
@@ -97,19 +111,43 @@ class GitController extends Controller
         return $port;
     }
 
-    private function stopServer(string $repoPath): void
+    private function stopServer(string $repoPath)
     {
-        $port = session("repo_port_{$repoPath}");
-        exec("FOR /F \"tokens=5\" %a in ('netstat -aon ^| findstr :{$port}') do taskkill /F /PID %a");
-        $this->clearSession($repoPath);
-        session()->push('success', 'Servidor ' . basename($repoPath) . ' parado com sucesso!');
+        $port = Cache::get("repo_port_{$repoPath}");
+
+        if (!$port) {
+            $this->addMessage('error', 'Nenhuma porta foi encontrada para parar o servidor do repositório ' . basename($repoPath));
+            return;
+        }
+        Cache::put("repo_status_{$repoPath}", "Desligado");
+
+        exec("FOR /F \"tokens=5\" %a in ('netstat -aon ^| findstr :{$port}') do taskkill /F /PID %a", $output, $result);
+
+        if ($result === 0) {
+            $this->clearSession($repoPath);
+            $this->addMessage('success', 'Servidor ' . basename($repoPath) . ' parado com sucesso!');
+        } else {
+            $this->addMessage('error', 'Erro ao parar o servidor do repositório ' . basename($repoPath) . ': ' . implode("\n", $output));
+        }
     }
+
+    private function addMessage(string $type, string $message): void
+    {
+        $cacheKey = "messages_{$type}";
+        $messages = Cache::get($cacheKey, []);
+        $messages[] = $message;
+        Cache::put($cacheKey, $messages);
+    }
+
 
     private function storeServerStatus(string $repoPath, int $port, string $status): void
     {
-        session()->put("repo_status_{$repoPath}", $status);
-        session()->put("repo_port_{$repoPath}", $port);
-        session()->push('success', "Servidor " . basename($repoPath) . " {$status} na porta {$port}!");
+        Cache::put("repo_status_{$repoPath}", $status);
+        Cache::put("repo_port_{$repoPath}", $port);
+
+        $successMessages = Cache::get('success', []);
+        $successMessages[] = "Servidor " . basename($repoPath) . " {$status} na porta {$port}!";
+        Cache::put('success', $successMessages);
     }
 
     private function executeGitCommand(string $repoPath, string $command): array
@@ -126,18 +164,23 @@ class GitController extends Controller
             ? $successMessage
             : "{$errorMessage} do repositório " . basename($repoPath) . ': ' . implode("\n", $commandOutput['output']);
 
-        session()->push($messagesKey, $message);
+        $cacheKey = "messages_{$messagesKey}";
+        $currentMessages = Cache::get($cacheKey, []);
+
+        $currentMessages[] = $message;
+
+        Cache::put($cacheKey, $currentMessages);
     }
 
     private function toggleStatus(string $repoPath): string
     {
-        $currentStatus = session("repo_auto_server_status_{$repoPath}", 'Desligado');
+        $currentStatus = Cache::get("repo_auto_server_status_{$repoPath}", 'Desligado');
         $newStatus = $currentStatus === 'Ligado' ? 'Desligado' : 'Ligado';
-        session()->put("repo_auto_server_status_{$repoPath}", $newStatus);
+        Cache::put("repo_auto_server_status_{$repoPath}", $newStatus);
         return $newStatus;
     }
 
-    private function getRepositories(string $baseDir): array
+    public function getRepositories(string $baseDir): array
     {
         return array_filter(array_map(fn($dir) => $this->isValidRepository($dir) ? $this->createRepositoryData($dir) : null, glob($baseDir . '/*')), fn($repo) => $repo !== null);
     }
@@ -176,7 +219,7 @@ class GitController extends Controller
 
     private function isServerRunning(string $repoPath): bool
     {
-        $port = session("repo_port_{$repoPath}");
+        $port = Cache::get("repo_port_{$repoPath}");
         if (!$port) return false;
 
         exec("netstat -ano | findstr :{$port}", $output);
@@ -207,11 +250,11 @@ class GitController extends Controller
     private function clearSession(string $repoPath = null): void
     {
         if ($repoPath) {
-            session()->forget("repo_status_{$repoPath}");
-            session()->forget("repo_port_{$repoPath}");
+            Cache::forget("repo_status_{$repoPath}");
+            Cache::forget("repo_port_{$repoPath}");
         } else {
-            session()->forget('success');
-            session()->forget('error');
+            Cache::forget('success');
+            Cache::forget('error');
         }
     }
 
