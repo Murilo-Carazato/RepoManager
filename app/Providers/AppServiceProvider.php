@@ -22,17 +22,27 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // if (!session()->has('auto_run_started')) {
-        $gitController = new GitController();
         // $repositories = $gitController->getRepositories('C:\Users\Murilo Carazato\Documents\Flutter Projects\assis-ofertas');
-        $repositories = $gitController->getRepositories('C:\Users\Murilo Carazato\Documents\Flutter Projects');
+        // $gitController = new GitController();
+        // $repositories = $gitController->getRepositories('C:\Users\Murilo Carazato\Documents\Flutter Projects');
 
-        foreach ($repositories as $repo) {
-            Cache::forget("repo_started_{$repo['path']}");
-        }
+        // foreach ($repositories as $repo) {
+        //     Cache::forget("repo_started_{$repo['path']}");
+        // }
 
-        $gitController->autoRunStart();
+        // $gitController->autoRunStart();
 
         //     session()->put('auto_run_started', true);
         // }
+
+
+        $gitController = new GitController();
+        $repositories = $gitController->getRepositories('C:\Users\Murilo Carazato\Documents\Flutter Projects');
+
+        foreach ($repositories as $repo) {
+            Cache::forget("repo_manual_stop_{$repo['path']}");
+        }
+
+        $gitController->autoRunStart();
     }
 }

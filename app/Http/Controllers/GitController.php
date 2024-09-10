@@ -42,9 +42,7 @@ class GitController extends Controller
         $repoPath = $request->input('repo_path');
         $newStatus = $this->toggleStatus($repoPath);
 
-        $successMessages = Cache::get('success', []);
-        $successMessages[] = "O auto run foi {$newStatus} no servidor: " . basename($repoPath);
-        Cache::put('success', $successMessages);
+        $this->addMessage('success', "O auto run foi {$newStatus} no servidor: " . basename($repoPath));
 
         Cache::forget('auto_run_started');
 
@@ -93,8 +91,10 @@ class GitController extends Controller
         $status = Cache::get("repo_status_{$repoPath}", 'Desligado');
 
         if ($status === 'Ligado') {
+            //Cache::put("repo_manual_stop_{$repoPath}", true); 
             $this->stopServer($repoPath);
         } else {
+            //Cache::forget("repo_manual_stop_{$repoPath}"); 
             $this->startServer($repoPath);
         }
 
@@ -145,9 +145,7 @@ class GitController extends Controller
         Cache::put("repo_status_{$repoPath}", $status);
         Cache::put("repo_port_{$repoPath}", $port);
 
-        $successMessages = Cache::get('success', []);
-        $successMessages[] = "Servidor " . basename($repoPath) . " {$status} na porta {$port}!";
-        Cache::put('success', $successMessages);
+        $this->addMessage('success', "Servidor " . basename($repoPath) . " {$status} na porta {$port}!");
     }
 
     private function executeGitCommand(string $repoPath, string $command): array
@@ -164,12 +162,7 @@ class GitController extends Controller
             ? $successMessage
             : "{$errorMessage} do repositório " . basename($repoPath) . ': ' . implode("\n", $commandOutput['output']);
 
-        $cacheKey = "messages_{$messagesKey}";
-        $currentMessages = Cache::get($cacheKey, []);
-
-        $currentMessages[] = $message;
-
-        Cache::put($cacheKey, $currentMessages);
+        $this->addMessage($messagesKey, $message);
     }
 
     private function toggleStatus(string $repoPath): string
@@ -252,9 +245,10 @@ class GitController extends Controller
         if ($repoPath) {
             Cache::forget("repo_status_{$repoPath}");
             Cache::forget("repo_port_{$repoPath}");
+            Cache::forget("repo_started_{$repoPath}");
         } else {
-            Cache::forget('success');
-            Cache::forget('error');
+            Cache::forget('messages_success');
+            Cache::forget('messages_error');
         }
     }
 
